@@ -4,3 +4,6 @@ services:
     runtime: python
     buildCommand: pip install -r requirements.txt
     startCommand: python app.py
+    envVars:
+      - key: TELEGRAM_TOKEN
+        value: 8816183730:AAEtiaif9ixe1fZNyieLuZDw89Gk_jjv1Fo
