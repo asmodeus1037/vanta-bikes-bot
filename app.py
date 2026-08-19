@@ -1,7 +1,6 @@
 import os
 import json
 import asyncio
-import threading
 from datetime import datetime
 from flask import Flask
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
@@ -93,12 +92,11 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"📍 По вопросам: @dzufear | @Pashtetboss"
     )
 
-# ===== ЗАПУСК БОТА =====
+# ===== ЗАПУСК =====
 
-def run_bot():
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    
+if __name__ == "__main__":
+    # Запускаем бота в ОСНОВНОМ потоке (так надо для signal handlers)
+    # Но Flask должен работать параллельно — используем asyncio для опроса бота
     application = Application.builder().token(BOT_TOKEN).build()
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("myid", show_my_id))
@@ -107,13 +105,15 @@ def run_bot():
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     
     print("✅ Бот запущен и работает")
-    application.run_polling()
-
-# ===== ЗАПУСК =====
-
-if __name__ == "__main__":
-    bot_thread = threading.Thread(target=run_bot, daemon=True)
-    bot_thread.start()
     
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+    # Запускаем Flask в отдельном потоке, а бота — в основном
+    import threading
+    def run_flask():
+        port = int(os.environ.get("PORT", 5000))
+        app.run(host="0.0.0.0", port=port)
+    
+    flask_thread = threading.Thread(target=run_flask)
+    flask_thread.start()
+    
+    # Бот запускаем в основном потоке (здесь нет ошибки с signal handlers)
+    application.run_polling()
